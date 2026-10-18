@@ -53,6 +53,13 @@ struct Dylint {
     no_deps: bool,
 
     #[clap(
+        global = true,
+        long,
+        help = "Do not build missing, outdated, or unverifiable compiler drivers"
+    )]
+    no_driver_build: bool,
+
+    #[clap(
         action = ArgAction::Append,
         number_of_values = 1,
         short,
@@ -260,6 +267,7 @@ impl From<Dylint> for dylint::opts::Dylint {
             fix,
             keep_going,
             no_deps,
+            no_driver_build,
             packages,
             workspace,
             args,
@@ -306,6 +314,7 @@ impl From<Dylint> for dylint::opts::Dylint {
             }),
         };
         Self {
+            no_driver_build,
             pipe_stderr,
             pipe_stdout,
             quiet,
@@ -427,3 +436,7 @@ mod tests {
         Opts::command().debug_assert();
     }
 }
+
+#[cfg(test)]
+#[path = "no_driver_build_tests.rs"]
+mod no_driver_build_tests;
