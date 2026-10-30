@@ -3,6 +3,7 @@
 **Contents**
 
 - [How libraries are found]
+- [Compiler drivers]
 - [Library requirements]
 - [Limitations]
 
@@ -27,6 +28,10 @@ If `--lib-path name` is used, then `name` is treated only as a path, and not as 
 If `--all` is used, Dylint runs all lints in all libraries discovered via 1 and 2 above.
 
 Note: Earlier versions of Dylint searched the current package's `target/debug` and `target/release` directories for libraries. This feature has been removed.
+
+## Compiler drivers
+
+Dylint builds a compiler driver when a lint operation needs one and no current driver is available in the driver cache. `--no-driver-build` prevents building a missing, outdated, or unverifiable driver and is off by default. When enabled, it requires a current driver to be pre-provisioned in the cache; cached drivers are used according to Dylint's existing version policy. This option is independent of `--no-build`, which controls builds of lint libraries discovered through workspace metadata.
 
 ## Library requirements
 
@@ -78,6 +83,7 @@ To run a library's lints on a package, Dylint tries to build the package with th
 
 One way this problem can manifest itself is if you try to run one library's lints on the source code of another library. That is, if two libraries use different toolchains, they may not be applicable to each other.
 
+[Compiler drivers]: #compiler-drivers
 [How libraries are found]: #how-libraries-are-found
 [Library requirements]: #library-requirements
 [Limitations]: #limitations

@@ -1,3 +1,8 @@
+//! Parse Cargo's `cargo dylint` command line and propagate its options to Dylint operations.
+//!
+//! Global CLI options are parsed alongside the selected subcommand so that operations such as lint
+//! checking and listing can apply the same driver and library build policies.
+
 use clap::{ArgAction, Parser, crate_version};
 use std::{ffi::OsStr, fmt::Debug};
 
@@ -51,6 +56,13 @@ struct Dylint {
 
     #[clap(long, help = "Do not check other packages within the workspace")]
     no_deps: bool,
+
+    #[clap(
+        global = true,
+        long,
+        help = "Do not build missing, outdated, or unverifiable compiler drivers"
+    )]
+    no_driver_build: bool,
 
     #[clap(
         action = ArgAction::Append,
@@ -255,11 +267,13 @@ struct OutputOptions {
 }
 
 impl From<Dylint> for dylint::opts::Dylint {
+    /// Convert parsed CLI values into the options consumed by Dylint operations.
     fn from(opts: Dylint) -> Self {
         let Dylint {
             fix,
             keep_going,
             no_deps,
+            no_driver_build,
             packages,
             workspace,
             args,
@@ -306,6 +320,7 @@ impl From<Dylint> for dylint::opts::Dylint {
             }),
         };
         Self {
+            no_driver_build,
             pipe_stderr,
             pipe_stdout,
             quiet,
@@ -427,3 +442,7 @@ mod tests {
         Opts::command().debug_assert();
     }
 }
+
+#[cfg(test)]
+#[path = "no_driver_build_tests.rs"]
+mod no_driver_build_tests;
