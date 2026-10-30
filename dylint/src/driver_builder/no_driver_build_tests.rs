@@ -1,6 +1,7 @@
 //! Driver-build refusal tests that never run a compiler or cached driver.
 
 use super::*;
+use anyhow::Error;
 use std::cell::Cell;
 
 /// Check that refusing absent, outdated, or unverifiable drivers skips the build closure.
@@ -253,6 +254,6 @@ fn assert_transient_probe_retries_and_reuses_current(
     Ok(())
 }
 
-fn transient_io_error(kind: std::io::ErrorKind, message: &str) -> anyhow::Error {
-    anyhow::Error::new(std::io::Error::new(kind, message)).context("driver status probe failed")
+fn transient_io_error(kind: std::io::ErrorKind, message: &str) -> Error {
+    Error::new(std::io::Error::new(kind, message)).context("driver status probe failed")
 }

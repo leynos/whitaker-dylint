@@ -1,7 +1,7 @@
 //! Cached compiler-driver validation, reuse, and optional source builds.
 //!
-//! Driver-build refusal preserves probe failures and tolerates brief Windows
-//! cache-replacement gaps without invoking the build operation.
+//! Driver-build refusal preserves probe failures and tolerates brief Windows cache-replacement gaps
+//! without invoking the build operation.
 
 use crate::{error::warn, opts};
 use anyhow::{Context, Result, anyhow, ensure};
@@ -46,8 +46,8 @@ pub fn main() -> Result<()> {
 
 /// Find the cached driver for a toolchain, building it when the options allow.
 ///
-/// The existing version policy accepts a driver at least as new as Dylint.
-/// Refusal mode rechecks transient Windows replacement failures before failing.
+/// The existing version policy accepts a driver at least as new as Dylint. Refusal mode rechecks
+/// transient Windows replacement failures before failing.
 #[cfg_attr(
     dylint_lib = "question_mark_in_expression",
     allow(question_mark_in_expression)
@@ -123,10 +123,32 @@ enum DriverStatus {
     Outdated,
 }
 
+/// Compare the cached driver's reported version with this Dylint version.
+///
+/// Execution, encoding, and version-parsing errors remain available to the caller's build or
+/// refusal policy.
+fn is_outdated(toolchain: &str, driver: &Path) -> Result<bool> {
+    let mut command = dylint_driver(toolchain, driver)?;
+    let output = command.args(["-V"]).logged_output(true)?;
+    let stdout = std::str::from_utf8(&output.stdout)?;
+    let theirs = stdout
+        .trim_end()
+        .rsplit_once(' ')
+        .map(|(_, s)| s)
+        .ok_or_else(|| anyhow!("Could not determine driver version"))?;
+
+    let their_version = Version::parse(theirs)
+        .with_context(|| format!("Could not parse driver version `{theirs}`"))?;
+
+    let our_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
+
+    Ok(their_version < our_version)
+}
+
 /// Reprobe transient cache-replacement results at most three times.
 ///
-/// Missing entries and not-found or permission-denied I/O errors may recover
-/// after a Windows rename. Other results return immediately.
+/// Missing entries and not-found or permission-denied I/O errors may recover after a Windows
+/// rename. Other results return immediately.
 fn retry_transient_driver_probe(
     mut probe: impl FnMut() -> Result<DriverStatus>,
 ) -> Result<DriverStatus> {
@@ -153,32 +175,10 @@ fn retry_transient_driver_probe(
     status
 }
 
-/// Compare the cached driver's reported version with this Dylint version.
-///
-/// Execution, encoding, and version-parsing errors remain available to the
-/// caller's build or refusal policy.
-fn is_outdated(toolchain: &str, driver: &Path) -> Result<bool> {
-    let mut command = dylint_driver(toolchain, driver)?;
-    let output = command.args(["-V"]).logged_output(true)?;
-    let stdout = std::str::from_utf8(&output.stdout)?;
-    let theirs = stdout
-        .trim_end()
-        .rsplit_once(' ')
-        .map(|(_, s)| s)
-        .ok_or_else(|| anyhow!("Could not determine driver version"))?;
-
-    let their_version = Version::parse(theirs)
-        .with_context(|| format!("Could not parse driver version `{theirs}`"))?;
-
-    let our_version = Version::parse(env!("CARGO_PKG_VERSION"))?;
-
-    Ok(their_version < our_version)
-}
-
 /// Apply reuse, refusal, and rebuilding policy to a probed driver status.
 ///
-/// The injected build operation runs only when rebuilding is allowed. Refused
-/// probe errors retain their source even when warnings are quiet.
+/// The injected build operation runs only when rebuilding is allowed. Refused probe errors retain
+/// their source even when warnings are quiet.
 fn ensure_driver(
     opts: &opts::Dylint,
     driver: &Path,
