@@ -106,8 +106,13 @@ fn create_cached_driver(tempdir: &TempDir, contents: &[u8]) -> std::io::Result<P
     Ok(driver)
 }
 
+/// Build the expected driver path with native separators for diagnostic assertions.
+// leynos: Combining these components preserves a slash in Windows diagnostic paths.
+#[cfg_attr(dylint_lib = "const_path_join", allow(const_path_join))]
 fn driver_cache_path(cache_root: &Path) -> PathBuf {
-    cache_root.join("no-driver-build-test/dylint-driver")
+    cache_root
+        .join("no-driver-build-test")
+        .join("dylint-driver")
 }
 
 /// Build a `cargo dylint list` command isolated from host tools and driver caches.
