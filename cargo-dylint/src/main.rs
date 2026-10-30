@@ -1,3 +1,8 @@
+//! Parse Cargo's `cargo dylint` command line and propagate its options to Dylint operations.
+//!
+//! Global CLI options are parsed alongside the selected subcommand so that operations such as
+//! lint checking and listing can apply the same driver and library build policies.
+
 use clap::{ArgAction, Parser, crate_version};
 use std::{ffi::OsStr, fmt::Debug};
 

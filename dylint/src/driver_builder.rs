@@ -1,3 +1,8 @@
+//! Cached compiler-driver validation, reuse, and optional source builds.
+//!
+//! Driver-build refusal preserves probe failures and tolerates brief Windows
+//! cache-replacement gaps without invoking the build operation.
+
 use crate::{error::warn, opts};
 use anyhow::{Context, Result, anyhow, ensure};
 use dylint_internal::{
@@ -39,6 +44,10 @@ pub fn main() -> Result<()> {
 }
 ";
 
+/// Find the cached driver for a toolchain, building it when the options allow.
+///
+/// The existing version policy accepts a driver at least as new as Dylint.
+/// Refusal mode rechecks transient Windows replacement failures before failing.
 #[cfg_attr(
     dylint_lib = "question_mark_in_expression",
     allow(question_mark_in_expression)
@@ -57,16 +66,23 @@ pub fn get(opts: &opts::Dylint, toolchain: &str) -> Result<PathBuf> {
     }
 
     let driver = driver_dir.join("dylint-driver");
-    let status = if driver.exists() {
-        is_outdated(toolchain, &driver).map(|outdated| {
-            if outdated {
-                DriverStatus::Outdated
-            } else {
-                DriverStatus::Current
-            }
-        })
+    let mut probe = || {
+        if driver.exists() {
+            is_outdated(toolchain, &driver).map(|outdated| {
+                if outdated {
+                    DriverStatus::Outdated
+                } else {
+                    DriverStatus::Current
+                }
+            })
+        } else {
+            Ok(DriverStatus::Missing)
+        }
+    };
+    let status = if opts.no_driver_build && cfg!(target_os = "windows") {
+        retry_transient_driver_probe(&mut probe)
     } else {
-        Ok(DriverStatus::Missing)
+        probe()
     };
     ensure_driver(opts, &driver, status, || {
         build(opts, toolchain, &driver_dir)
@@ -107,6 +123,40 @@ enum DriverStatus {
     Outdated,
 }
 
+/// Reprobe transient cache-replacement results at most three times.
+///
+/// Missing entries and not-found or permission-denied I/O errors may recover
+/// after a Windows rename. Other results return immediately.
+fn retry_transient_driver_probe(
+    mut probe: impl FnMut() -> Result<DriverStatus>,
+) -> Result<DriverStatus> {
+    let mut status = probe();
+    for _ in 1..3 {
+        let retry = match &status {
+            Ok(DriverStatus::Missing) => true,
+            Err(error) => error.chain().any(|cause| {
+                cause.downcast_ref::<std::io::Error>().is_some_and(|error| {
+                    matches!(
+                        error.kind(),
+                        std::io::ErrorKind::NotFound | std::io::ErrorKind::PermissionDenied
+                    )
+                })
+            }),
+            Ok(DriverStatus::Current | DriverStatus::Outdated) => false,
+        };
+        if !retry {
+            return status;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        status = probe();
+    }
+    status
+}
+
+/// Compare the cached driver's reported version with this Dylint version.
+///
+/// Execution, encoding, and version-parsing errors remain available to the
+/// caller's build or refusal policy.
 fn is_outdated(toolchain: &str, driver: &Path) -> Result<bool> {
     let mut command = dylint_driver(toolchain, driver)?;
     let output = command.args(["-V"]).logged_output(true)?;
@@ -125,8 +175,10 @@ fn is_outdated(toolchain: &str, driver: &Path) -> Result<bool> {
     Ok(their_version < our_version)
 }
 
-// leynos: Keep the refusal at the same decision that invokes the build operation. The
-// injected operation lets tests exercise every outcome without invoking Cargo.
+/// Apply reuse, refusal, and rebuilding policy to a probed driver status.
+///
+/// The injected build operation runs only when rebuilding is allowed. Refused
+/// probe errors retain their source even when warnings are quiet.
 fn ensure_driver(
     opts: &opts::Dylint,
     driver: &Path,
@@ -137,6 +189,12 @@ fn ensure_driver(
         Ok(DriverStatus::Current) => return Ok(()),
         Ok(DriverStatus::Missing) => "missing",
         Ok(DriverStatus::Outdated) => "outdated",
+        Err(error) if opts.no_driver_build => {
+            return Err(error).context(format!(
+                "Compiler driver `{}` is unverifiable; --no-driver-build requires a prebuilt compatible driver",
+                driver.display()
+            ));
+        }
         Err(error) => {
             warn(opts, &error.to_string());
             "unverifiable"

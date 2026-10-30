@@ -43,6 +43,20 @@ The next two steps install Dylint and run all of this repository's [general-purp
 
 In the above example, the libraries are found via the command line. If you plan to run Dylint regularly, then consider using [workspace metadata]. For additional ways of finding libraries, see [How Dylint works].
 
+By default, Dylint builds compiler drivers when needed. Use `--no-driver-build` to prevent builds of missing, outdated, or unverifiable drivers; this option is off by default and requires a current driver to be pre-provisioned in the driver cache. Cached drivers are used according to Dylint's existing version policy. This option is independent of `--no-build`, which controls builds of lint libraries discovered through workspace metadata.
+
+For example, check a workspace using only cached compiler drivers:
+
+```sh
+cargo dylint --no-driver-build --all
+```
+
+To list available lints without building either drivers or metadata libraries:
+
+```sh
+cargo dylint list --no-driver-build --no-build --all
+```
+
 ### Writing lints
 
 You can start writing your own Dylint library by running `cargo dylint new new_lint_name`. Doing so will produce a loadable library right out of the box. You can verify this as follows:
