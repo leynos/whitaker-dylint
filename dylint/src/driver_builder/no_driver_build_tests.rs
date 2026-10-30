@@ -3,6 +3,7 @@
 use super::*;
 use std::cell::Cell;
 
+/// Check that refusing absent, outdated, or unverifiable drivers skips the build closure.
 #[test]
 fn refuses_missing_outdated_and_unverifiable_drivers_without_building() {
     for (status, reason) in [
@@ -31,6 +32,7 @@ fn refuses_missing_outdated_and_unverifiable_drivers_without_building() {
     }
 }
 
+/// Check that the default policy builds when the cached driver cannot be used.
 #[test]
 fn defaults_still_build_missing_outdated_and_unverifiable_drivers() {
     for status in [
@@ -59,6 +61,7 @@ fn defaults_still_build_missing_outdated_and_unverifiable_drivers() {
     }
 }
 
+/// Check that a current cached driver is reused under either build policy.
 #[test]
 fn current_driver_is_reused_with_or_without_refusal() {
     for no_driver_build in [false, true] {
@@ -98,6 +101,7 @@ fn default_mode_propagates_build_failures() {
     );
 }
 
+/// Check that a quiet refusal retains the probe error and never starts a build.
 #[test]
 fn quiet_unverifiable_refusal_preserves_the_probe_error_and_skips_build() -> Result<()> {
     let opts = opts::Dylint {
@@ -133,6 +137,7 @@ fn quiet_unverifiable_refusal_preserves_the_probe_error_and_skips_build() -> Res
     Ok(())
 }
 
+/// Check that transient missing and I/O probe results retry before reusing a current driver.
 #[test]
 fn transient_missing_and_io_probe_errors_retry_then_reuse_current_driver() -> Result<()> {
     for first_probe in [
@@ -151,6 +156,7 @@ fn transient_missing_and_io_probe_errors_retry_then_reuse_current_driver() -> Re
     Ok(())
 }
 
+/// Check that current, outdated, and non-I/O probe results are returned without retrying.
 #[test]
 fn current_outdated_and_non_io_probe_errors_are_not_retried() -> Result<()> {
     for (response, expected) in [
@@ -192,6 +198,7 @@ fn current_outdated_and_non_io_probe_errors_are_not_retried() -> Result<()> {
     Ok(())
 }
 
+/// Check that persistent absence stops after three probes and still refuses to build.
 #[test]
 fn persistent_missing_probe_stops_after_three_attempts_and_refuses_build() -> Result<()> {
     let calls = Cell::new(0);
@@ -218,6 +225,7 @@ fn persistent_missing_probe_stops_after_three_attempts_and_refuses_build() -> Re
     Ok(())
 }
 
+/// Retry a transient probe result and verify that the current driver is reused.
 fn assert_transient_probe_retries_and_reuses_current(
     first_probe: Result<DriverStatus>,
 ) -> Result<()> {

@@ -267,6 +267,7 @@ struct OutputOptions {
 }
 
 impl From<Dylint> for dylint::opts::Dylint {
+    /// Convert parsed CLI values into the options consumed by Dylint operations.
     fn from(opts: Dylint) -> Self {
         let Dylint {
             fix,

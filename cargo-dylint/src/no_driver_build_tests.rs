@@ -2,6 +2,7 @@
 
 use super::*;
 
+/// Check that driver refusal is opt-in and independent of library build suppression.
 #[test]
 fn no_driver_build_is_explicit_and_independent_of_no_build() -> anyhow::Result<()> {
     for (arguments, no_driver_build, no_build) in [
@@ -26,6 +27,7 @@ fn no_driver_build_is_explicit_and_independent_of_no_build() -> anyhow::Result<(
     Ok(())
 }
 
+/// Check that listing retains the driver-refusal option in either argument order.
 #[test]
 fn no_driver_build_reaches_the_list_operation() -> anyhow::Result<()> {
     for arguments in [

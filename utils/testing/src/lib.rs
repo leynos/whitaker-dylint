@@ -294,6 +294,7 @@ fn linking_flags(
 
 static RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^\s*Running\s*`(.*)`$").unwrap());
 
+/// Ask Cargo to compile an example and return the `rustc` flags used for its target.
 fn rustc_flags(_metadata: &Metadata, package: &Package, target: &Target) -> Result<Vec<String>> {
     // Previously, this function removed the example executable from Cargo's legacy examples
     // output directory before running `cargo build --verbose`. That forced the example to be

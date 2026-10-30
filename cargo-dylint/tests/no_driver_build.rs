@@ -5,6 +5,7 @@ use dylint_internal::env;
 use std::{env::consts, fs, path::Path};
 use tempfile::{Builder, TempDir, tempdir, tempdir_in};
 
+/// Check that a missing cached driver fails before any tool is provisioned.
 #[test]
 fn missing_driver_refusal_reaches_get_without_starting_a_build() -> std::io::Result<()> {
     let tempdir = tempdir()?;
@@ -24,6 +25,7 @@ fn missing_driver_refusal_reaches_get_without_starting_a_build() -> std::io::Res
     Ok(())
 }
 
+/// Check that quiet mode reports the original failure to probe an unusable cached driver.
 #[test]
 fn quiet_unverifiable_cached_driver_refusal_preserves_the_probe_cause() -> std::io::Result<()> {
     let tempdir = tempdir()?;
@@ -48,6 +50,7 @@ fn quiet_unverifiable_cached_driver_refusal_preserves_the_probe_cause() -> std::
     Ok(())
 }
 
+/// Check that refusing an outdated driver leaves the cached file intact.
 #[cfg(unix)]
 #[test]
 fn outdated_cached_driver_refusal_does_not_replace_the_driver() -> std::io::Result<()> {
@@ -81,6 +84,7 @@ fn create_library(tempdir: &TempDir) -> std::io::Result<tempfile::NamedTempFile>
         .tempfile_in(tempdir)
 }
 
+/// Write a test driver into the isolated driver's cache and return its path.
 fn create_cached_driver(tempdir: &TempDir, contents: &[u8]) -> std::io::Result<std::path::PathBuf> {
     let driver = driver_cache_path(tempdir.path());
     let parent = driver.parent().expect("driver path has a parent");
@@ -93,6 +97,7 @@ fn driver_cache_path(cache_root: &Path) -> std::path::PathBuf {
     cache_root.join("no-driver-build-test/dylint-driver")
 }
 
+/// Build a `cargo dylint list` command isolated from host tools and driver caches.
 fn list_command(
     tempdir: &TempDir,
     empty_path: &TempDir,
@@ -117,6 +122,7 @@ fn list_command(
     command
 }
 
+/// Run a command and check that driver refusal names the status, path, and cache requirement.
 fn assert_refusal(
     mut command: assert_cmd::Command,
     status: &str,
@@ -135,6 +141,7 @@ fn assert_refusal(
     Ok(stderr)
 }
 
+/// Check that the isolated executable directory remains empty after refusal.
 fn assert_no_tool_provisioned(empty_path: &TempDir) -> std::io::Result<()> {
     let entries = fs::read_dir(empty_path)?;
     assert_eq!(
